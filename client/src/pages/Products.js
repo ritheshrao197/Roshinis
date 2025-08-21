@@ -29,7 +29,8 @@ import {
   FormControlLabel,
   Divider,
   Fab,
-  Badge
+  Badge,
+  CardActions
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -461,12 +462,12 @@ const Products = () => {
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Products
+      <Box sx={{ mb: 4, textAlign: 'center' }}>
+        <Typography variant="h3" color="primary" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700 }}>
+          Explore Our Products
         </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Discover our amazing collection of products
+        <Typography variant="h6" color="text.secondary" sx={{ mt: 1 }}>
+          Pure, natural, and crafted with care for your family’s well-being.
         </Typography>
       </Box>
 
@@ -527,8 +528,116 @@ const Products = () => {
       )}
 
       {/* Products Grid */}
-      <Grid container spacing={3}>
-        {products.map(renderProductCard)}
+      <Grid container spacing={4} sx={{ mt: 2 }}>
+        {loading ? (
+          Array.from({ length: 9 }).map((_, idx) => (
+            <Grid item xs={12} sm={6} md={4} key={idx}>
+              <Card sx={{ borderRadius: 4, boxShadow: 2, minHeight: 350 }}>
+                <Skeleton variant="rectangular" height={180} sx={{ borderRadius: 4 }} />
+                <CardContent>
+                  <Skeleton width="60%" />
+                  <Skeleton width="40%" />
+                  <Skeleton width="80%" />
+                </CardContent>
+              </Card>
+            </Grid>
+          ))
+        ) : error ? (
+          <Grid item xs={12}>
+            <Alert severity="error">{error}</Alert>
+          </Grid>
+        ) : products.length === 0 ? (
+          <Grid item xs={12}>
+            <Typography align="center" color="text.secondary" sx={{ mt: 6 }}>
+              No products found.
+            </Typography>
+          </Grid>
+        ) : (
+          products.map((product) => (
+            <Grid item xs={12} sm={6} md={4} key={product.id}>
+              <Card
+                sx={{
+                  borderRadius: 4,
+                  boxShadow: '0 4px 16px rgba(76,175,80,0.08)',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  minHeight: 350,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  '&:hover': {
+                    transform: 'translateY(-6px) scale(1.02)',
+                    boxShadow: '0 8px 24px rgba(76,175,80,0.16)',
+                  },
+                }}
+              >
+                <Box sx={{ position: 'relative' }}>
+                  <CardMedia
+                    component="img"
+                    height="180"
+                    image={product.image}
+                    alt={product.name}
+                    sx={{ objectFit: 'cover', background: '#F5F0E6', borderTopLeftRadius: 16, borderTopRightRadius: 16 }}
+                  />
+                  {product.onSale && (
+                    <Chip
+                      label="On Sale"
+                      color="warning"
+                      size="small"
+                      sx={{ position: 'absolute', top: 12, left: 12, fontWeight: 700 }}
+                    />
+                  )}
+                  {!product.inStock && (
+                    <Chip
+                      label="Out of Stock"
+                      color="error"
+                      size="small"
+                      sx={{ position: 'absolute', top: 12, right: 12, fontWeight: 700 }}
+                    />
+                  )}
+                </Box>
+                <CardContent sx={{ flexGrow: 1 }}>
+                  <Typography variant="h6" color="primary" sx={{ fontFamily: '"Playfair Display", serif' }}>
+                    {product.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    {product.description}
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Typography variant="h6" color="accent.main" sx={{ fontWeight: 700 }}>
+                      ₹{product.price}
+                    </Typography>
+                    {product.originalPrice && product.originalPrice > product.price && (
+                      <Typography variant="body2" color="text.secondary" sx={{ textDecoration: 'line-through' }}>
+                        ₹{product.originalPrice}
+                      </Typography>
+                    )}
+                  </Box>
+                  <Typography variant="caption" color="success.main">
+                    {product.inStock ? 'In Stock' : 'Currently Unavailable'}
+                  </Typography>
+                </CardContent>
+                <CardActions sx={{ px: 2, pb: 2 }}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    fullWidth
+                    disabled={!product.inStock}
+                    onClick={() => handleAddToCart(product)}
+                    sx={{
+                      borderRadius: 24,
+                      fontWeight: 700,
+                      fontSize: 16,
+                      py: 1.2,
+                      boxShadow: 'none',
+                    }}
+                  >
+                    <CartIcon sx={{ mr: 1 }} />
+                    {isInCart(product.id) ? 'In Cart' : 'Add to Cart'}
+                  </Button>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))
+        )}
       </Grid>
 
       {/* Pagination */}

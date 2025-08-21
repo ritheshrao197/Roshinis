@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { CssBaseline, Box } from '@mui/material';
+import { CssBaseline, Box, Container, Paper, Typography, Divider, TextField, Button } from '@mui/material';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -26,6 +26,7 @@ import AdminDashboard from './pages/admin/Dashboard';
 import AdminProducts from './pages/admin/Products';
 import AdminOrders from './pages/admin/Orders';
 import AdminUsers from './pages/admin/Users';
+import AddProduct from './pages/admin/AddProduct';
 
 // Context
 import { AuthProvider } from './context/AuthContext';
@@ -35,61 +36,103 @@ import { CartProvider } from './context/CartContext';
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#1976d2',
-      light: '#42a5f5',
-      dark: '#1565c0',
+      main: '#4CAF50', // Warm Green
+      light: '#81C784',
+      dark: '#388E3C',
+      contrastText: '#fff',
     },
     secondary: {
-      main: '#dc004e',
-      light: '#ff5983',
-      dark: '#9a0036',
+      main: '#F5F0E6', // Earthy Beige
+      contrastText: '#333333',
+    },
+    accent: {
+      main: '#FFD54F', // Golden Yellow
+      contrastText: '#333333',
     },
     background: {
-      default: '#f5f5f5',
-      paper: '#ffffff',
+      default: '#FFFFFF', // White backgrounds
+      paper: '#F5F0E6',   // Soft beige for cards/sections
+    },
+    text: {
+      primary: '#333333', // Charcoal Gray
+      secondary: '#4CAF50',
     },
   },
   typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: [
+      '"Lato"',
+      '"Poppins"',
+      '"Open Sans"',
+      'Arial',
+      'sans-serif'
+    ].join(','),
     h1: {
+      fontFamily: '"Playfair Display", "Cormorant", serif',
+      fontWeight: 700,
       fontSize: '2.5rem',
-      fontWeight: 600,
+      color: '#4CAF50',
     },
     h2: {
-      fontSize: '2rem',
+      fontFamily: '"Playfair Display", "Cormorant", serif',
       fontWeight: 600,
+      fontSize: '2rem',
+      color: '#4CAF50',
     },
     h3: {
-      fontSize: '1.75rem',
+      fontFamily: '"Playfair Display", "Cormorant", serif',
       fontWeight: 600,
+      fontSize: '1.75rem',
+      color: '#4CAF50',
     },
     h4: {
-      fontSize: '1.5rem',
       fontWeight: 600,
+      fontSize: '1.5rem',
+      color: '#333333',
     },
     h5: {
-      fontSize: '1.25rem',
       fontWeight: 600,
+      fontSize: '1.25rem',
+      color: '#333333',
     },
     h6: {
-      fontSize: '1rem',
       fontWeight: 600,
+      fontSize: '1rem',
+      color: '#333333',
     },
+    button: {
+      fontWeight: 700,
+      letterSpacing: 1,
+    },
+  },
+  shape: {
+    borderRadius: 16, // Softer, rounded corners
   },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
+          borderRadius: 24,
           textTransform: 'none',
-          borderRadius: 8,
+          fontWeight: 700,
+        },
+        containedPrimary: {
+          backgroundColor: '#4CAF50',
+          color: '#fff',
+          '&:hover': { backgroundColor: '#388E3C' },
+        },
+        containedSecondary: {
+          backgroundColor: '#FFD54F',
+          color: '#333333',
+          '&:hover': { backgroundColor: '#FFC107' },
         },
       },
     },
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          borderRadius: 20,
+          boxShadow: '0 4px 16px rgba(76,175,80,0.08)',
+          background: '#fff',
         },
       },
     },
@@ -97,7 +140,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            borderRadius: 8,
+            borderRadius: 16,
           },
         },
       },
@@ -136,7 +179,8 @@ function App() {
                   <Route path="/admin/products" element={<AdminProducts />} />
                   <Route path="/admin/orders" element={<AdminOrders />} />
                   <Route path="/admin/users" element={<AdminUsers />} />
-                  
+                  <Route path="/admin/products/new" element={<AddProduct />} />
+
                   {/* 404 Route */}
                   <Route path="*" element={<div>Page not found</div>} />
                 </Routes>

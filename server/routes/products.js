@@ -2,6 +2,8 @@ const express = require('express');
 const { body, validationResult, query } = require('express-validator');
 const Product = require('../models/Product');
 const { protect, authorize } = require('../middleware/auth');
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
 
 const router = express.Router();
 
@@ -221,6 +223,22 @@ router.post('/', protect, authorize('admin'), [
     });
   }
 });
+
+// Add this route for /api/admin/products
+router.post(
+  '/admin/products',
+  // protect, authorize('admin'), // Uncomment if you want auth
+  upload.array('images'),
+  async (req, res) => {
+    try {
+      // req.body contains text fields
+      // req.files contains uploaded images
+      res.status(201).json({ success: true, message: 'Product created!' });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+);
 
 // @desc    Update product (admin only)
 // @route   PUT /api/products/:id

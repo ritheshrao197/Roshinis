@@ -265,7 +265,7 @@ const Header = () => {
             }}
             onClick={() => navigate('/')}
           >
-            E-Commerce
+            Roshinis Home Products
           </Typography>
 
           {!isMobile && (
