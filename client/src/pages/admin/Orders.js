@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import {
   Container,
   Grid,
@@ -22,19 +23,16 @@ import {
   TableRow,
   Paper,
   Chip,
-  useTheme,
-  useMediaQuery,
+  Alert,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
-  Alert,
-  Skeleton
+  DialogActions
 } from '@mui/material';
 import {
-  Visibility as ViewIcon,
   Edit as EditIcon,
-  LocalShipping as ShippingIcon,
+  Delete as DeleteIcon,
+  Add as AddIcon,
   Search as SearchIcon,
   FilterList as FilterIcon,
   Refresh as RefreshIcon
@@ -44,9 +42,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const AdminOrders = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, isAdmin } = useAuth();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { isAuthenticated, isAdmin, user } = useAuth();
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,56 +50,109 @@ const AdminOrders = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
+  
+  // Dialog states
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  
+  // Form states
+  const [formData, setFormData] = useState({
+    orderNumber: '',
+    customerName: '',
+    customerEmail: '',
+    customerPhone: '',
+    amount: '',
+    status: 'pending',
+    paymentMethod: 'PhonePe',
+    paymentStatus: 'pending',
+    shippingAddress: '',
+    items: []
+  });
 
   useEffect(() => {
-    if (isAuthenticated && isAdmin) {
+    if (isAuthenticated() && isAdmin()) {
       fetchOrders();
     }
-  }, [isAuthenticated, isAdmin]);
+  }, [isAuthenticated, isAdmin, user]);
 
   const fetchOrders = async () => {
     setLoading(true);
     try {
+      // Try to fetch from admin orders endpoint first
+      try {
+        const response = await axios.get('/api/orders/admin/all');
+        if (response.data.success) {
+          setOrders(response.data.orders || []);
+          setError('');
+          console.log('✅ Admin orders loaded from API:', response.data.orders?.length || 0);
+          return;
+        }
+      } catch (apiError) {
+        console.log('⚠️  Admin orders API not available, using mock data');
+      }
+      
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Mock orders data
+      // Enhanced mock orders data
       const mockOrders = [
         {
           id: 1,
           orderNumber: 'ORD-2024001',
           customerName: 'John Doe',
           customerEmail: 'john.doe@example.com',
+          customerPhone: '+91 98765 43210',
           amount: 2499,
           status: 'pending',
           date: '2024-01-15T10:30:00',
           items: 3,
           paymentMethod: 'PhonePe',
-          paymentStatus: 'paid'
+          paymentStatus: 'paid',
+          shippingAddress: '123 Main St, City, State 12345'
         },
         {
           id: 2,
           orderNumber: 'ORD-2024002',
           customerName: 'Sarah Smith',
           customerEmail: 'sarah.smith@example.com',
+          customerPhone: '+91 98765 43211',
           amount: 1599,
           status: 'shipped',
           date: '2024-01-15T09:15:00',
           items: 2,
           paymentMethod: 'PhonePe',
-          paymentStatus: 'paid'
+          paymentStatus: 'paid',
+          shippingAddress: '456 Oak Ave, Town, State 54321'
         },
         {
           id: 3,
           orderNumber: 'ORD-2024003',
           customerName: 'Mike Johnson',
           customerEmail: 'mike.johnson@example.com',
+          customerPhone: '+91 98765 43212',
           amount: 899,
           status: 'delivered',
           date: '2024-01-15T08:45:00',
           items: 1,
           paymentMethod: 'COD',
-          paymentStatus: 'pending'
+          paymentStatus: 'pending',
+          shippingAddress: '789 Pine Rd, Village, State 98765'
+        },
+        {
+          id: 4,
+          orderNumber: 'ORD-2024004',
+          customerName: 'Emily Brown',
+          customerEmail: 'emily.brown@example.com',
+          customerPhone: '+91 98765 43213',
+          amount: 3299,
+          status: 'processing',
+          date: '2024-01-14T15:20:00',
+          items: 5,
+          paymentMethod: 'PhonePe',
+          paymentStatus: 'paid',
+          shippingAddress: '321 Elm St, City, State 11111'
         }
       ];
       
@@ -121,7 +170,7 @@ const AdminOrders = () => {
     const matchesSearch = order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          order.customerEmail.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || (order.status?.current || order.status) === statusFilter;
     const matchesDate = dateFilter === 'all' || 
                        (dateFilter === 'recent' && new Date(order.date) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) ||
                        (dateFilter === 'old' && new Date(order.date) <= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
@@ -167,7 +216,127 @@ const AdminOrders = () => {
     return status === 'paid' ? 'success' : 'warning';
   };
 
-  if (!isAuthenticated) {
+  const handleAdd = () => {
+    setFormData({
+      orderNumber: `ORD-${Date.now()}`,
+      customerName: '',
+      customerEmail: '',
+      customerPhone: '',
+      amount: '',
+      status: 'pending',
+      paymentMethod: 'PhonePe',
+      paymentStatus: 'pending',
+      shippingAddress: '',
+      items: []
+    });
+    setAddDialogOpen(true);
+  };
+
+  const handleEdit = (order) => {
+    setSelectedOrder(order);
+    setFormData({
+      orderNumber: order.orderNumber,
+      customerName: order.customerName,
+      customerEmail: order.customerEmail,
+      customerPhone: order.customerPhone || '',
+      amount: order.amount.toString(),
+      status: order.status?.current || order.status,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      shippingAddress: order.shippingAddress || '',
+      items: order.items || []
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleDelete = (order) => {
+    setSelectedOrder(order);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleFormChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSubmitAdd = async () => {
+    try {
+      const newOrderData = {
+        ...formData,
+        amount: parseFloat(formData.amount)
+      };
+
+      // MOCK: For now, just simulate API call since we're in mock mode
+      // In production, you would make: await axios.post('/api/orders', newOrderData);
+      
+      const newOrder = {
+        id: Date.now(),
+        ...newOrderData,
+        date: new Date().toISOString(),
+        items: Array.isArray(formData.items) ? formData.items.length : 0
+      };
+      
+      setOrders(prev => [...prev, newOrder]);
+      setAddDialogOpen(false);
+      setError('');
+      console.log('✅ Order added (mock mode):', newOrder);
+    } catch (err) {
+      setError('Failed to add order');
+      console.error('Error adding order:', err);
+    }
+  };
+
+  const handleSubmitEdit = async () => {
+    try {
+      // Make API call to update order on server
+      const updateData = {
+        ...formData,
+        amount: parseFloat(formData.amount)
+      };
+
+      const response = await axios.put(`/api/orders/${selectedOrder.id}`, updateData);
+
+      if (response.data.success) {
+        // Update local state with server response
+        setOrders(prev => prev.map(order => 
+          order.id === selectedOrder.id 
+            ? { 
+                ...order, 
+                ...updateData,
+                items: Array.isArray(formData.items) ? formData.items.length : formData.items
+              }
+            : order
+        ));
+        setEditDialogOpen(false);
+        setError('');
+        console.log('✅ Order updated successfully:', response.data.order);
+      } else {
+        setError(response.data.message || 'Failed to update order');
+      }
+    } catch (err) {
+      setError('Failed to update order. Please try again.');
+      console.error('Error updating order:', err);
+    }
+  };
+
+  const handleSubmitDelete = async () => {
+    try {
+      // MOCK: For now, just simulate API call since we're in mock mode
+      // In production, you would make: await axios.delete(`/api/orders/${selectedOrder.id}`);
+      
+      setOrders(prev => prev.filter(order => order.id !== selectedOrder.id));
+      setDeleteDialogOpen(false);
+      setError('');
+      console.log('✅ Order deleted (mock mode):', selectedOrder.id);
+    } catch (err) {
+      setError('Failed to delete order');
+      console.error('Error deleting order:', err);
+    }
+  };
+
+  if (!isAuthenticated()) {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Alert severity="warning" sx={{ mb: 3 }}>
@@ -183,7 +352,7 @@ const AdminOrders = () => {
     );
   }
 
-  if (!isAdmin) {
+  if (!isAdmin()) {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -210,13 +379,22 @@ const AdminOrders = () => {
         <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
           Manage Orders
         </Typography>
-        <Button
-          variant="outlined"
-          startIcon={<RefreshIcon />}
-          onClick={fetchOrders}
-        >
-          Refresh
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={fetchOrders}
+          >
+            Refresh
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleAdd}
+          >
+            Add Order
+          </Button>
+        </Box>
       </Box>
 
       {/* Filters */}
@@ -349,8 +527,8 @@ const AdminOrders = () => {
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={getStatusText(order.status)}
-                          color={getStatusColor(order.status)}
+                          label={getStatusText(order.status?.current || order.status)}
+                          color={getStatusColor(order.status?.current || order.status)}
                           size="small"
                         />
                       </TableCell>
@@ -376,17 +554,17 @@ const AdminOrders = () => {
                         <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
                           <IconButton
                             size="small"
-                            onClick={() => navigate(`/admin/orders/${order.id}`)}
+                            onClick={() => handleEdit(order)}
                             color="primary"
                           >
-                            <ViewIcon />
+                            <EditIcon />
                           </IconButton>
                           <IconButton
                             size="small"
-                            onClick={() => navigate(`/admin/orders/${order.id}/edit`)}
-                            color="info"
+                            onClick={() => handleDelete(order)}
+                            color="error"
                           >
-                            <EditIcon />
+                            <DeleteIcon />
                           </IconButton>
                         </Box>
                       </TableCell>
@@ -398,6 +576,258 @@ const AdminOrders = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Add Order Dialog */}
+      <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Add New Order</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Order Number"
+                value={formData.orderNumber}
+                onChange={(e) => handleFormChange('orderNumber', e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Customer Name"
+                value={formData.customerName}
+                onChange={(e) => handleFormChange('customerName', e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Customer Email"
+                type="email"
+                value={formData.customerEmail}
+                onChange={(e) => handleFormChange('customerEmail', e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Customer Phone"
+                value={formData.customerPhone}
+                onChange={(e) => handleFormChange('customerPhone', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Amount"
+                type="number"
+                value={formData.amount}
+                onChange={(e) => handleFormChange('amount', e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Order Status</InputLabel>
+                <Select
+                  value={formData.status}
+                  label="Order Status"
+                  onChange={(e) => handleFormChange('status', e.target.value)}
+                >
+                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="processing">Processing</MenuItem>
+                  <MenuItem value="shipped">Shipped</MenuItem>
+                  <MenuItem value="delivered">Delivered</MenuItem>
+                  <MenuItem value="cancelled">Cancelled</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Payment Method</InputLabel>
+                <Select
+                  value={formData.paymentMethod}
+                  label="Payment Method"
+                  onChange={(e) => handleFormChange('paymentMethod', e.target.value)}
+                >
+                  <MenuItem value="PhonePe">PhonePe</MenuItem>
+                  <MenuItem value="COD">Cash on Delivery</MenuItem>
+                  <MenuItem value="Credit Card">Credit Card</MenuItem>
+                  <MenuItem value="Debit Card">Debit Card</MenuItem>
+                  <MenuItem value="Net Banking">Net Banking</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Payment Status</InputLabel>
+                <Select
+                  value={formData.paymentStatus}
+                  label="Payment Status"
+                  onChange={(e) => handleFormChange('paymentStatus', e.target.value)}
+                >
+                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="paid">Paid</MenuItem>
+                  <MenuItem value="failed">Failed</MenuItem>
+                  <MenuItem value="refunded">Refunded</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Shipping Address"
+                value={formData.shippingAddress}
+                onChange={(e) => handleFormChange('shippingAddress', e.target.value)}
+                multiline
+                rows={3}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAddDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleSubmitAdd} variant="contained">Add Order</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Order Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Edit Order</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Order Number"
+                value={formData.orderNumber}
+                onChange={(e) => handleFormChange('orderNumber', e.target.value)}
+                disabled
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Customer Name"
+                value={formData.customerName}
+                onChange={(e) => handleFormChange('customerName', e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Customer Email"
+                type="email"
+                value={formData.customerEmail}
+                onChange={(e) => handleFormChange('customerEmail', e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Customer Phone"
+                value={formData.customerPhone}
+                onChange={(e) => handleFormChange('customerPhone', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Amount"
+                type="number"
+                value={formData.amount}
+                onChange={(e) => handleFormChange('amount', e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Order Status</InputLabel>
+                <Select
+                  value={formData.status}
+                  label="Order Status"
+                  onChange={(e) => handleFormChange('status', e.target.value)}
+                >
+                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="processing">Processing</MenuItem>
+                  <MenuItem value="shipped">Shipped</MenuItem>
+                  <MenuItem value="delivered">Delivered</MenuItem>
+                  <MenuItem value="cancelled">Cancelled</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Payment Method</InputLabel>
+                <Select
+                  value={formData.paymentMethod}
+                  label="Payment Method"
+                  onChange={(e) => handleFormChange('paymentMethod', e.target.value)}
+                >
+                  <MenuItem value="PhonePe">PhonePe</MenuItem>
+                  <MenuItem value="COD">Cash on Delivery</MenuItem>
+                  <MenuItem value="Credit Card">Credit Card</MenuItem>
+                  <MenuItem value="Debit Card">Debit Card</MenuItem>
+                  <MenuItem value="Net Banking">Net Banking</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Payment Status</InputLabel>
+                <Select
+                  value={formData.paymentStatus}
+                  label="Payment Status"
+                  onChange={(e) => handleFormChange('paymentStatus', e.target.value)}
+                >
+                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="paid">Paid</MenuItem>
+                  <MenuItem value="failed">Failed</MenuItem>
+                  <MenuItem value="refunded">Refunded</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Shipping Address"
+                value={formData.shippingAddress}
+                onChange={(e) => handleFormChange('shippingAddress', e.target.value)}
+                multiline
+                rows={3}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleSubmitEdit} variant="contained">Update Order</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Order Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Delete Order</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete the order "{selectedOrder?.orderNumber}"?
+            This action cannot be undone.
+          </Typography>
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            Deleting this order will permanently remove it from the system.
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleSubmitDelete} variant="contained" color="error">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

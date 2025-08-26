@@ -48,7 +48,6 @@ const Register = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const validateStep = (step) => {
     const newErrors = {};

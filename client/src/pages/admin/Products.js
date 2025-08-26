@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import {
   Container,
   Grid,
@@ -28,8 +29,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Alert,
-  Skeleton
+  Alert
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -67,48 +67,30 @@ const AdminProducts = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Fetch from the same API endpoint that the public page uses
+      const response = await axios.get('/api/products');
       
-      // Mock products data
-      const mockProducts = [
-        {
-          id: 1,
-          name: 'Premium Product 1',
-          category: 'Electronics',
-          price: 999,
-          stock: 50,
-          status: 'active',
-          sku: 'SKU-001',
-          createdAt: '2024-01-15'
-        },
-        {
-          id: 2,
-          name: 'Premium Product 2',
-          category: 'Fashion',
-          price: 501,
-          stock: 25,
-          status: 'active',
-          sku: 'SKU-002',
-          createdAt: '2024-01-14'
-        },
-        {
-          id: 3,
-          name: 'Premium Product 3',
-          category: 'Electronics',
-          price: 1599,
-          stock: 0,
-          status: 'inactive',
-          sku: 'SKU-003',
-          createdAt: '2024-01-13'
-        }
-      ];
-      
-      setProducts(mockProducts);
-      setError('');
+      if (response.data.success) {
+        // Transform the public API data to match admin table format
+        const transformedProducts = response.data.products.map(product => ({
+          id: product._id,
+          name: product.name,
+          category: product.category.charAt(0).toUpperCase() + product.category.slice(1),
+          price: product.price,
+          stock: Math.floor(Math.random() * 100) + 10, // Mock stock for now
+          status: product.status || 'active',
+          sku: `SKU-${product._id?.slice(-6) || Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+          createdAt: product.createdAt ? new Date(product.createdAt).toLocaleDateString() : new Date().toLocaleDateString()
+        }));
+        
+        setProducts(transformedProducts);
+        console.log('✅ Admin products loaded:', transformedProducts.length);
+      } else {
+        setError('Failed to fetch products from API');
+      }
     } catch (err) {
-      setError('Failed to fetch products. Please try again.');
       console.error('Error fetching products:', err);
+      setError('Failed to fetch products. Please try again.');
     } finally {
       setLoading(false);
     }

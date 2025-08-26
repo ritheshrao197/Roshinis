@@ -1,13 +1,13 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
-const User = require('../models/User');
+// const User = require('../models/User'); // Commented out for mock mode
 const { protect, authorize, sendTokenResponse } = require('../middleware/auth');
 const crypto = require('crypto');
 
 const router = express.Router();
 
-// @desc    Register user
+// @desc    Register user - MOCK VERSION
 // @route   POST /api/auth/register
 // @access  Public
 router.post('/register', [
@@ -39,24 +39,28 @@ router.post('/register', [
 
     const { name, email, password, phone } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'User with this email already exists'
-      });
-    }
-
-    // Create user
-    const user = await User.create({
+    // MOCK: Simulate user registration
+    const mockUser = {
+      _id: 'mock-user-' + Date.now(),
       name,
       email,
-      password,
-      phone
-    });
+      phone,
+      role: 'user',
+      isActive: true,
+      emailVerified: false,
+      phoneVerified: false,
+      createdAt: new Date()
+    };
 
-    sendTokenResponse(user, 201, res);
+    const mockToken = 'mock-user-token-' + Date.now();
+
+    console.log('✅ Mock user registered:', mockUser.email);
+
+    res.status(201).json({
+      success: true,
+      token: mockToken,
+      user: mockUser
+    });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({
@@ -66,7 +70,7 @@ router.post('/register', [
   }
 });
 
-// @desc    Login user
+// @desc    Login user - MOCK VERSION
 // @route   POST /api/auth/login
 // @access  Public
 router.post('/login', [
@@ -91,36 +95,47 @@ router.post('/login', [
 
     const { email, password } = req.body;
 
-    // Check if user exists and password is correct
-    const user = await User.findOne({ email }).select('+password');
-    if (!user) {
+    // MOCK: Simple credential check
+    let mockUser, mockToken;
+    
+    if (email === 'admin@example.com' && password === 'admin123') {
+      mockUser = {
+        _id: 'mock-admin-id',
+        name: 'Admin User',
+        email: 'admin@example.com',
+        role: 'admin',
+        phone: '+91 98765 43210',
+        isActive: true,
+        emailVerified: true,
+        phoneVerified: true
+      };
+      mockToken = 'mock-admin-token-' + Date.now();
+    } else if (email === 'user@example.com' && password === 'user123') {
+      mockUser = {
+        _id: 'mock-user-id',
+        name: 'Regular User',
+        email: 'user@example.com',
+        role: 'user',
+        phone: '+91 98765 43211',
+        isActive: true,
+        emailVerified: true,
+        phoneVerified: false
+      };
+      mockToken = 'mock-user-token-' + Date.now();
+    } else {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
       });
     }
 
-    const isPasswordCorrect = await user.comparePassword(password);
-    if (!isPasswordCorrect) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
+    console.log('✅ Mock user logged in:', mockUser.email);
 
-    // Check if user is active
-    if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: 'Account is deactivated. Please contact support.'
-      });
-    }
-
-    // Update last login
-    user.lastLogin = new Date();
-    await user.save();
-
-    sendTokenResponse(user, 200, res);
+    res.json({
+      success: true,
+      token: mockToken,
+      user: mockUser
+    });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({
@@ -130,15 +145,15 @@ router.post('/login', [
   }
 });
 
-// @desc    Get current user profile
+// @desc    Get current user profile - MOCK VERSION
 // @route   GET /api/auth/profile
 // @access  Private
 router.get('/profile', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    // MOCK: Return the user data from the auth middleware
     res.json({
       success: true,
-      user
+      user: req.user
     });
   } catch (error) {
     console.error('Get profile error:', error);
@@ -149,7 +164,7 @@ router.get('/profile', protect, async (req, res) => {
   }
 });
 
-// @desc    Update user profile
+// @desc    Update user profile - MOCK VERSION
 // @route   PUT /api/auth/profile
 // @access  Private
 router.put('/profile', protect, [
@@ -175,21 +190,21 @@ router.put('/profile', protect, [
     }
 
     const { name, phone, addresses } = req.body;
-    const updateFields = {};
+    
+    // MOCK: Update user data from middleware
+    const updatedUser = {
+      ...req.user,
+      ...(name && { name }),
+      ...(phone && { phone }),
+      ...(addresses && { addresses }),
+      updatedAt: new Date()
+    };
 
-    if (name) updateFields.name = name;
-    if (phone) updateFields.phone = phone;
-    if (addresses) updateFields.addresses = addresses;
-
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      updateFields,
-      { new: true, runValidators: true }
-    );
+    console.log('✅ Mock user profile updated:', updatedUser.email);
 
     res.json({
       success: true,
-      user
+      user: updatedUser
     });
   } catch (error) {
     console.error('Update profile error:', error);
@@ -200,7 +215,7 @@ router.put('/profile', protect, [
   }
 });
 
-// @desc    Change password
+// @desc    Change password - MOCK VERSION
 // @route   PUT /api/auth/change-password
 // @access  Private
 router.put('/change-password', protect, [
@@ -224,22 +239,8 @@ router.put('/change-password', protect, [
 
     const { currentPassword, newPassword } = req.body;
 
-    // Get user with password
-    const user = await User.findById(req.user._id).select('+password');
-
-    // Check current password
-    const isCurrentPasswordCorrect = await user.comparePassword(currentPassword);
-    if (!isCurrentPasswordCorrect) {
-      return res.status(400).json({
-        success: false,
-        message: 'Current password is incorrect'
-      });
-    }
-
-    // Update password
-    user.password = newPassword;
-    user.passwordChangedAt = Date.now();
-    await user.save();
+    // MOCK: Simple password change simulation
+    console.log('✅ Mock password changed for user:', req.user.email);
 
     res.json({
       success: true,
@@ -254,7 +255,7 @@ router.put('/change-password', protect, [
   }
 });
 
-// @desc    Forgot password
+// @desc    Forgot password - MOCK VERSION
 // @route   POST /api/auth/forgot-password
 // @access  Public
 router.post('/forgot-password', [
@@ -276,24 +277,23 @@ router.post('/forgot-password', [
 
     const { email } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user) {
+    // MOCK: Check if email exists in our mock system
+    if (email !== 'admin@example.com' && email !== 'user@example.com') {
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
 
-    // Generate reset token
-    const resetToken = user.createPasswordResetToken();
-    await user.save();
+    // MOCK: Generate a mock reset token
+    const resetToken = 'mock-reset-token-' + Date.now();
 
-    // TODO: Send email with reset token
-    // For now, just return the token (in production, send via email)
+    console.log('✅ Mock password reset token generated for:', email);
+
     res.json({
       success: true,
       message: 'Password reset token sent to email',
-      resetToken: process.env.NODE_ENV === 'development' ? resetToken : undefined
+      resetToken: resetToken
     });
   } catch (error) {
     console.error('Forgot password error:', error);
@@ -304,7 +304,7 @@ router.post('/forgot-password', [
   }
 });
 
-// @desc    Reset password
+// @desc    Reset password - MOCK VERSION
 // @route   PUT /api/auth/reset-password/:resetToken
 // @access  Public
 router.put('/reset-password/:resetToken', [
@@ -326,31 +326,15 @@ router.put('/reset-password/:resetToken', [
     const { resetToken } = req.params;
     const { password } = req.body;
 
-    // Hash the reset token
-    const hashedToken = crypto
-      .createHash('sha256')
-      .update(resetToken)
-      .digest('hex');
-
-    // Find user with valid reset token
-    const user = await User.findOne({
-      passwordResetToken: hashedToken,
-      passwordResetExpires: { $gt: Date.now() }
-    });
-
-    if (!user) {
+    // MOCK: Check if reset token is valid (our mock tokens)
+    if (!resetToken.startsWith('mock-reset-token')) {
       return res.status(400).json({
         success: false,
         message: 'Invalid or expired reset token'
       });
     }
 
-    // Update password
-    user.password = password;
-    user.passwordResetToken = undefined;
-    user.passwordResetExpires = undefined;
-    user.passwordChangedAt = Date.now();
-    await user.save();
+    console.log('✅ Mock password reset successful for token:', resetToken);
 
     res.json({
       success: true,
@@ -375,16 +359,41 @@ router.post('/logout', protect, (req, res) => {
   });
 });
 
-// @desc    Get all users (admin only)
+// @desc    Get all users (admin only) - MOCK VERSION
 // @route   GET /api/auth/users
 // @access  Private/Admin
 router.get('/users', protect, authorize('admin'), async (req, res) => {
   try {
-    const users = await User.find().select('-password');
+    // MOCK: Return mock users data
+    const mockUsers = [
+      {
+        _id: 'mock-admin-id',
+        name: 'Admin User',
+        email: 'admin@example.com',
+        role: 'admin',
+        phone: '+91 98765 43210',
+        isActive: true,
+        emailVerified: true,
+        createdAt: '2024-01-15'
+      },
+      {
+        _id: 'mock-user-id',
+        name: 'Regular User',
+        email: 'user@example.com',
+        role: 'user',
+        phone: '+91 98765 43211',
+        isActive: true,
+        emailVerified: true,
+        createdAt: '2024-01-14'
+      }
+    ];
+
+    console.log('✅ Mock users fetched:', mockUsers.length);
+
     res.json({
       success: true,
-      count: users.length,
-      users
+      count: mockUsers.length,
+      users: mockUsers
     });
   } catch (error) {
     console.error('Get users error:', error);

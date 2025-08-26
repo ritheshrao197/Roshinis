@@ -1,13 +1,13 @@
 const express = require('express');
 const { body, validationResult, query } = require('express-validator');
-const Order = require('../models/Order');
-const Product = require('../models/Product');
-const Cart = require('../models/Cart');
+// const Order = require('../models/Order'); // Commented out for mock mode
+// const Product = require('../models/Product'); // Commented out for mock mode
+// const Cart = require('../models/Cart'); // Commented out for mock mode
 const { protect, authorize, checkOwnership } = require('../middleware/auth');
 
 const router = express.Router();
 
-// @desc    Create new order
+// @desc    Create new order - MOCK VERSION
 // @route   POST /api/orders
 // @access  Private
 router.post('/', protect, [
@@ -15,8 +15,8 @@ router.post('/', protect, [
     .isArray({ min: 1 })
     .withMessage('At least one item is required'),
   body('items.*.product')
-    .isMongoId()
-    .withMessage('Valid product ID is required'),
+    .notEmpty()
+    .withMessage('Product ID is required'),
   body('items.*.quantity')
     .isInt({ min: 1 })
     .withMessage('Quantity must be at least 1'),
@@ -63,103 +63,46 @@ router.post('/', protect, [
       discountCode
     } = req.body;
 
-    // Validate products and check inventory
-    const orderItems = [];
-    let subtotal = 0;
-    let totalWeight = 0;
-
-    for (const item of items) {
-      const product = await Product.findById(item.product);
-      if (!product) {
-        return res.status(400).json({
-          success: false,
-          message: `Product with ID ${item.product} not found`
-        });
-      }
-
-      if (product.status !== 'active') {
-        return res.status(400).json({
-          success: false,
-          message: `Product ${product.name} is not available`
-        });
-      }
-
-      if (!product.isInStock(item.quantity)) {
-        return res.status(400).json({
-          success: false,
-          message: `Insufficient stock for ${product.name}`
-        });
-      }
-
-      const itemTotal = product.price * item.quantity;
-      orderItems.push({
-        product: product._id,
-        quantity: item.quantity,
-        price: product.price,
-        total: itemTotal
-      });
-
-      subtotal += itemTotal;
-      totalWeight += (product.weight?.value || 0.5) * item.quantity;
-    }
-
-    // Calculate shipping cost (simplified calculation)
-    const shippingCost = calculateShippingCost(shippingAddress.pincode, totalWeight);
-    
-    // Calculate tax (simplified - 18% GST)
-    const taxRate = 18;
-    const taxAmount = (subtotal * taxRate) / 100;
-
-    // Calculate total
-    const total = subtotal + taxAmount + shippingCost;
-
-    // Create order
-    const order = new Order({
+    // MOCK: Simulate order creation instead of database operations
+    const orderNumber = `ORD-${Date.now()}`;
+    const mockOrder = {
+      _id: 'mock-order-' + Date.now(),
+      orderNumber,
       user: req.user._id,
-      items: orderItems,
-      subtotal,
+      items: items.map(item => ({
+        product: item.product,
+        quantity: item.quantity,
+        price: 999, // Mock price
+        total: 999 * item.quantity
+      })),
+      subtotal: items.reduce((sum, item) => sum + (999 * item.quantity), 0),
       tax: {
-        amount: taxAmount,
-        rate: taxRate
+        amount: items.reduce((sum, item) => sum + (999 * item.quantity), 0) * 0.18,
+        rate: 18
       },
       shipping: {
-        cost: shippingCost,
+        cost: 50,
         address: shippingAddress
       },
       payment: {
         method: payment.method,
-        amount: total
+        amount: items.reduce((sum, item) => sum + (999 * item.quantity), 0) * 1.18 + 50
       },
-      total,
+      total: items.reduce((sum, item) => sum + (999 * item.quantity), 0) * 1.18 + 50,
       notes,
-      estimatedDelivery: calculateEstimatedDelivery(shippingAddress.pincode)
-    });
+      status: { current: 'pending' },
+      createdAt: new Date().toISOString(),
+      estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    };
 
-    // Calculate totals
-    order.calculateTotals();
-
-    // Save order
-    await order.save();
-
-    // Update product inventory
-    for (const item of orderItems) {
-      await Product.findByIdAndUpdate(item.product, {
-        $inc: { 'inventory.quantity': -item.quantity }
-      });
-    }
-
-    // Clear user's cart
-    await Cart.findOneAndUpdate(
-      { user: req.user._id },
-      { $set: { items: [], subtotal: 0, total: 0, itemCount: 0 } }
-    );
+    console.log('✅ Mock order created:', orderNumber);
 
     res.status(201).json({
       success: true,
-      message: 'Order created successfully',
+      message: 'Order created successfully (mock mode)',
       data: {
-        order: order,
-        orderNumber: order.orderNumber
+        order: mockOrder,
+        orderNumber: orderNumber
       }
     });
   } catch (error) {
@@ -171,7 +114,7 @@ router.post('/', protect, [
   }
 });
 
-// @desc    Get user orders
+// @desc    Get user orders - MOCK VERSION
 // @route   GET /api/orders
 // @access  Private
 router.get('/', protect, [
@@ -200,29 +143,56 @@ router.get('/', protect, [
     }
 
     const { page = 1, limit = 10, status } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Build filter
-    const filter = { user: req.user._id };
-    if (status) filter['status.current'] = status;
+    // MOCK: Return mock orders for the user
+    const mockOrders = [
+      {
+        _id: 'user-order-1',
+        orderNumber: 'ORD-USER-001',
+        user: req.user._id,
+        items: [
+          {
+            product: {
+              _id: 'prod-1',
+              name: 'Sample Product 1',
+              images: ['/images/sample1.jpg'],
+              price: 999
+            },
+            quantity: 2,
+            price: 999,
+            total: 1998
+          }
+        ],
+        subtotal: 1998,
+        tax: { amount: 359.64, rate: 18 },
+        shipping: { cost: 50 },
+        total: 2407.64,
+        status: { current: 'pending' },
+        createdAt: new Date().toISOString()
+      }
+    ];
 
-    // Get orders
-    const orders = await Order.find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .populate('items.product', 'name images price');
+    // Filter by status if provided
+    let filteredOrders = mockOrders;
+    if (status) {
+      filteredOrders = mockOrders.filter(order => order.status.current === status);
+    }
 
-    // Get total count
-    const total = await Order.countDocuments(filter);
+    // Apply pagination
+    const total = filteredOrders.length;
+    const startIndex = (parseInt(page) - 1) * parseInt(limit);
+    const endIndex = startIndex + parseInt(limit);
+    const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
+    console.log('✅ Mock user orders fetched:', paginatedOrders.length);
 
     res.json({
       success: true,
-      count: orders.length,
+      count: paginatedOrders.length,
       total,
       page: parseInt(page),
       pages: Math.ceil(total / parseInt(limit)),
-      orders
+      orders: paginatedOrders
     });
   } catch (error) {
     console.error('Get orders error:', error);
@@ -233,25 +203,58 @@ router.get('/', protect, [
   }
 });
 
-// @desc    Get single order
+// @desc    Get single order - MOCK VERSION
 // @route   GET /api/orders/:id
 // @access  Private
-router.get('/:id', protect, checkOwnership('Order'), async (req, res) => {
+router.get('/:id', protect, async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id)
-      .populate('items.product', 'name images price description')
-      .populate('user', 'name email phone');
+    // MOCK: Return mock order data
+    const mockOrder = {
+      _id: req.params.id,
+      orderNumber: 'ORD-USER-' + req.params.id,
+      user: {
+        _id: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+        phone: req.user.phone || '+91 98765 43210'
+      },
+      items: [
+        {
+          product: {
+            _id: 'prod-1',
+            name: 'Sample Product 1',
+            images: ['/images/sample1.jpg'],
+            price: 999,
+            description: 'A great sample product for testing'
+          },
+          quantity: 2,
+          price: 999,
+          total: 1998
+        }
+      ],
+      subtotal: 1998,
+      tax: { amount: 359.64, rate: 18 },
+      shipping: { cost: 50, address: '123 Main St, City, State 12345' },
+      total: 2407.64,
+      status: { current: 'pending' },
+      payment: { method: 'PhonePe', status: 'pending' },
+      createdAt: new Date().toISOString(),
+      estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    };
 
-    if (!order) {
-      return res.status(404).json({
+    // Check if user owns this order (simple check for mock)
+    if (req.user.role !== 'admin' && mockOrder.user._id !== req.user._id) {
+      return res.status(403).json({
         success: false,
-        message: 'Order not found'
+        message: 'Access denied. You can only access your own orders.'
       });
     }
 
+    console.log('✅ Mock order fetched:', req.params.id);
+
     res.json({
       success: true,
-      order
+      order: mockOrder
     });
   } catch (error) {
     console.error('Get order error:', error);
@@ -262,7 +265,7 @@ router.get('/:id', protect, checkOwnership('Order'), async (req, res) => {
   }
 });
 
-// @desc    Update order status (admin only)
+// @desc    Update order status (admin only) - MOCK VERSION
 // @route   PUT /api/orders/:id/status
 // @access  Private/Admin
 router.put('/:id/status', protect, authorize('admin'), [
@@ -287,22 +290,24 @@ router.put('/:id/status', protect, authorize('admin'), [
     }
 
     const { status, note } = req.body;
-    const order = await Order.findById(req.params.id);
 
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
-      });
-    }
+    // MOCK: Simulate order status update
+    const mockOrder = {
+      _id: req.params.id,
+      orderNumber: 'ORD-' + req.params.id,
+      status: { current: status },
+      statusHistory: [
+        { status, note, updatedBy: req.user._id, updatedAt: new Date().toISOString() }
+      ],
+      updatedAt: new Date().toISOString()
+    };
 
-    // Update order status
-    await order.updateStatus(status, note, req.user._id);
+    console.log('✅ Mock order status updated:', req.params.id, status);
 
     res.json({
       success: true,
-      message: 'Order status updated successfully',
-      order
+      message: 'Order status updated successfully (mock mode)',
+      order: mockOrder
     });
   } catch (error) {
     console.error('Update order status error:', error);
@@ -313,10 +318,89 @@ router.put('/:id/status', protect, authorize('admin'), [
   }
 });
 
-// @desc    Cancel order
+// @desc    Update order details (admin only) - MOCK VERSION
+// @route   PUT /api/orders/:id
+// @access  Private/Admin
+router.put('/:id', protect, authorize('admin'), [
+  body('orderNumber')
+    .optional()
+    .trim()
+    .isLength({ min: 3, max: 50 })
+    .withMessage('Order number must be between 3 and 50 characters'),
+  body('customerName')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Customer name must be between 2 and 100 characters'),
+  body('customerEmail')
+    .optional()
+    .isEmail()
+    .withMessage('Please provide a valid email'),
+  body('customerPhone')
+    .optional()
+    .matches(/^[+]?[0-9\s-()]{10,15}$/)
+    .withMessage('Please provide a valid phone number'),
+  body('amount')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Amount must be a positive number'),
+  body('status')
+    .optional()
+    .isIn(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'])
+    .withMessage('Invalid status'),
+  body('paymentMethod')
+    .optional()
+    .isIn(['PhonePe', 'COD', 'Bank Transfer'])
+    .withMessage('Invalid payment method'),
+  body('paymentStatus')
+    .optional()
+    .isIn(['pending', 'paid', 'failed', 'refunded'])
+    .withMessage('Invalid payment status'),
+  body('shippingAddress')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Shipping address cannot exceed 500 characters')
+], async (req, res) => {
+  try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    // MOCK: Since we're in mock mode, we'll simulate order update
+    // In real implementation, you would:
+    // const order = await Order.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    
+    console.log('✅ Mock order updated:', req.params.id, req.body);
+
+    res.json({
+      success: true,
+      message: 'Order updated successfully (mock mode)',
+      order: {
+        id: req.params.id,
+        ...req.body,
+        updatedAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Update order error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update order'
+    });
+  }
+});
+
+// @desc    Cancel order - MOCK VERSION
 // @route   PUT /api/orders/:id/cancel
 // @access  Private
-router.put('/:id/cancel', protect, checkOwnership('Order'), [
+router.put('/:id/cancel', protect, [
   body('reason')
     .trim()
     .isLength({ min: 1, max: 200 })
@@ -334,37 +418,23 @@ router.put('/:id/cancel', protect, checkOwnership('Order'), [
     }
 
     const { reason } = req.body;
-    const order = req.resource;
 
-    // Check if order can be cancelled
-    if (order.status.current === 'delivered') {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot cancel delivered order'
-      });
-    }
+    // MOCK: Simulate order cancellation
+    const mockOrder = {
+      _id: req.params.id,
+      orderNumber: 'ORD-' + req.params.id,
+      status: { current: 'cancelled' },
+      cancellationReason: reason,
+      cancelledBy: req.user._id,
+      cancelledAt: new Date().toISOString()
+    };
 
-    if (order.status.current === 'cancelled') {
-      return res.status(400).json({
-        success: false,
-        message: 'Order is already cancelled'
-      });
-    }
-
-    // Update order status
-    await order.updateStatus('cancelled', reason, req.user._id);
-
-    // Restore product inventory
-    for (const item of order.items) {
-      await Product.findByIdAndUpdate(item.product, {
-        $inc: { 'inventory.quantity': item.quantity }
-      });
-    }
+    console.log('✅ Mock order cancelled:', req.params.id, reason);
 
     res.json({
       success: true,
-      message: 'Order cancelled successfully',
-      order
+      message: 'Order cancelled successfully (mock mode)',
+      order: mockOrder
     });
   } catch (error) {
     console.error('Cancel order error:', error);
@@ -375,7 +445,7 @@ router.put('/:id/cancel', protect, checkOwnership('Order'), [
   }
 });
 
-// @desc    Get all orders (admin only)
+// @desc    Get all orders (admin only) - MOCK VERSION
 // @route   GET /api/orders/admin/all
 // @access  Private/Admin
 router.get('/admin/all', protect, authorize('admin'), [
@@ -412,35 +482,104 @@ router.get('/admin/all', protect, authorize('admin'), [
     }
 
     const { page = 1, limit = 20, status, startDate, endDate } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // MOCK: Return mock orders data instead of database query
+    const mockOrders = [
+      {
+        _id: '1',
+        id: 1,
+        orderNumber: 'ORD-2024001',
+        user: {
+          name: 'John Doe',
+          email: 'john.doe@example.com',
+          phone: '+91 98765 43210'
+        },
+        customerName: 'John Doe',
+        customerEmail: 'john.doe@example.com',
+        customerPhone: '+91 98765 43210',
+        amount: 2499,
+        total: 2499,
+        status: { current: 'pending' },
+        paymentMethod: 'PhonePe',
+        paymentStatus: 'paid',
+        shippingAddress: '123 Main St, City, State 12345',
+        items: 3,
+        createdAt: '2024-01-15T10:30:00Z',
+        updatedAt: '2024-01-15T10:30:00Z'
+      },
+      {
+        _id: '2',
+        id: 2,
+        orderNumber: 'ORD-2024002',
+        user: {
+          name: 'Sarah Smith',
+          email: 'sarah.smith@example.com',
+          phone: '+91 98765 43211'
+        },
+        customerName: 'Sarah Smith',
+        customerEmail: 'sarah.smith@example.com',
+        customerPhone: '+91 98765 43211',
+        amount: 1599,
+        total: 1599,
+        status: { current: 'shipped' },
+        paymentMethod: 'PhonePe',
+        paymentStatus: 'paid',
+        shippingAddress: '456 Oak Ave, Town, State 54321',
+        items: 1,
+        createdAt: '2024-01-15T09:15:00Z',
+        updatedAt: '2024-01-15T09:15:00Z'
+      },
+      {
+        _id: '3',
+        id: 3,
+        orderNumber: 'ORD-2024003',
+        user: {
+          name: 'Mike Johnson',
+          email: 'mike.johnson@example.com',
+          phone: '+91 98765 43212'
+        },
+        customerName: 'Mike Johnson',
+        customerEmail: 'mike.johnson@example.com',
+        customerPhone: '+91 98765 43212',
+        amount: 899,
+        total: 899,
+        status: { current: 'delivered' },
+        paymentMethod: 'COD',
+        paymentStatus: 'pending',
+        shippingAddress: '789 Pine Rd, Village, State 98765',
+        items: 1,
+        createdAt: '2024-01-15T08:45:00Z',
+        updatedAt: '2024-01-15T08:45:00Z'
+      }
+    ];
 
-    // Build filter
-    const filter = {};
-    if (status) filter['status.current'] = status;
-    if (startDate || endDate) {
-      filter.createdAt = {};
-      if (startDate) filter.createdAt.$gte = new Date(startDate);
-      if (endDate) filter.createdAt.$lte = new Date(endDate);
+    // Apply filters
+    let filteredOrders = [...mockOrders];
+    if (status) {
+      filteredOrders = filteredOrders.filter(order => order.status.current === status);
+    }
+    if (startDate) {
+      filteredOrders = filteredOrders.filter(order => new Date(order.createdAt) >= new Date(startDate));
+    }
+    if (endDate) {
+      filteredOrders = filteredOrders.filter(order => new Date(order.createdAt) <= new Date(endDate));
     }
 
-    // Get orders
-    const orders = await Order.find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .populate('user', 'name email phone')
-      .populate('items.product', 'name sku');
+    // Apply pagination
+    const total = filteredOrders.length;
+    const startIndex = (parseInt(page) - 1) * parseInt(limit);
+    const endIndex = startIndex + parseInt(limit);
+    const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
 
-    // Get total count
-    const total = await Order.countDocuments(filter);
+    console.log('✅ Mock admin orders fetched:', paginatedOrders.length);
 
     res.json({
       success: true,
-      count: orders.length,
+      count: paginatedOrders.length,
       total,
       page: parseInt(page),
       pages: Math.ceil(total / parseInt(limit)),
-      orders
+      orders: paginatedOrders
     });
   } catch (error) {
     console.error('Get admin orders error:', error);
@@ -451,51 +590,51 @@ router.get('/admin/all', protect, authorize('admin'), [
   }
 });
 
-// @desc    Get order statistics (admin only)
+// @desc    Get order statistics (admin only) - MOCK VERSION
 // @route   GET /api/orders/admin/stats
 // @access  Private/Admin
 router.get('/admin/stats', protect, authorize('admin'), async (req, res) => {
   try {
-    // Get order statistics
-    const stats = await Order.aggregate([
-      {
-        $group: {
-          _id: '$status.current',
-          count: { $sum: 1 },
-          totalAmount: { $sum: '$total' }
+    // MOCK: Return mock statistics
+    const mockStats = {
+      statusBreakdown: [
+        { _id: 'pending', count: 5, totalAmount: 12495 },
+        { _id: 'processing', count: 3, totalAmount: 4797 },
+        { _id: 'shipped', count: 2, totalAmount: 3198 },
+        { _id: 'delivered', count: 8, totalAmount: 15992 },
+        { _id: 'cancelled', count: 1, totalAmount: 899 }
+      ],
+      totals: {
+        totalOrders: 19,
+        totalRevenue: 37381,
+        averageOrderValue: 1967.42
+      },
+      recentOrders: [
+        {
+          _id: '1',
+          orderNumber: 'ORD-2024001',
+          user: { name: 'John Doe' },
+          total: 2499,
+          status: { current: 'pending' },
+          createdAt: '2024-01-15T10:30:00Z'
+        },
+        {
+          _id: '2',
+          orderNumber: 'ORD-2024002',
+          user: { name: 'Sarah Smith' },
+          total: 1599,
+          status: { current: 'shipped' },
+          createdAt: '2024-01-15T09:15:00Z'
         }
-      }
-    ]);
-
-    // Get total orders and revenue
-    const totals = await Order.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalOrders: { $sum: 1 },
-          totalRevenue: { $sum: '$total' },
-          averageOrderValue: { $avg: '$total' }
-        }
-      }
-    ]);
-
-    // Get recent orders
-    const recentOrders = await Order.find()
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .populate('user', 'name')
-      .populate('items.product', 'name');
-
-    const response = {
-      statusBreakdown: stats,
-      totals: totals[0] || { totalOrders: 0, totalRevenue: 0, averageOrderValue: 0 },
-      recentOrders
+      ]
     };
+
+    console.log('✅ Mock order statistics fetched');
 
     res.json({
       success: true,
-      message: 'Order statistics retrieved successfully',
-      data: response
+      message: 'Order statistics retrieved successfully (mock mode)',
+      data: mockStats
     });
   } catch (error) {
     console.error('Get order stats error:', error);

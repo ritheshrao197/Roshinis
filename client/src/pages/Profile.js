@@ -16,14 +16,10 @@ import {
   Paper,
   useTheme,
   useMediaQuery,
-  Tabs,
-  Tab,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
-  ListItemSecondaryAction,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -40,17 +36,11 @@ import {
   Save as SaveIcon,
   Cancel as CancelIcon,
   Person as PersonIcon,
-  Email as EmailIcon,
-  Phone as PhoneIcon,
   LocationOn as LocationIcon,
   Security as SecurityIcon,
-  Notifications as NotificationsIcon,
-  ShoppingBag as ShoppingBagIcon,
-  Favorite as FavoriteIcon,
   Settings as SettingsIcon,
   Logout as LogoutIcon,
-  Add as AddIcon,
-  Delete as DeleteIcon
+  Add as AddIcon
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 

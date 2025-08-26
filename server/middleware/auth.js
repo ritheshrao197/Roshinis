@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+// const User = require('../models/User'); // Commented out for mock mode
 
-// Middleware to protect routes
+// Middleware to protect routes - MOCK VERSION
 const protect = async (req, res, next) => {
   try {
     let token;
@@ -18,44 +18,36 @@ const protect = async (req, res, next) => {
       });
     }
 
-    try {
-      // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      // Check if user still exists
-      const user = await User.findById(decoded.id).select('-password');
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'User no longer exists.'
-        });
-      }
-
-      // Check if user is active
-      if (!user.isActive) {
-        return res.status(401).json({
-          success: false,
-          message: 'User account is deactivated.'
-        });
-      }
-
-      // Check if password was changed after token was issued
-      if (user.changedPasswordAfter(decoded.iat)) {
-        return res.status(401).json({
-          success: false,
-          message: 'User recently changed password. Please log in again.'
-        });
-      }
-
-      // Add user to request object
-      req.user = user;
-      next();
-    } catch (error) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid token.'
-      });
+    // MOCK: Check for our mock tokens from AuthContext
+    if (token.startsWith('mock-admin-token')) {
+      // Mock admin user
+      req.user = {
+        _id: 'mock-admin-id',
+        name: 'Admin User',
+        email: 'admin@example.com',
+        role: 'admin',
+        isActive: true
+      };
+      console.log('✅ Mock admin authenticated');
+      return next();
+    } else if (token.startsWith('mock-user-token') || token.startsWith('mock-demo-token')) {
+      // Mock regular user
+      req.user = {
+        _id: 'mock-user-id',
+        name: 'Regular User',
+        email: 'user@example.com',
+        role: 'user',
+        isActive: true
+      };
+      console.log('✅ Mock user authenticated');
+      return next();
     }
+
+    // If token doesn't match our mock patterns, treat as invalid
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid token.'
+    });
   } catch (error) {
     console.error('Auth middleware error:', error);
     return res.status(500).json({

@@ -9,6 +9,7 @@ A full-stack e-commerce application built with React frontend, Node.js backend, 
 - **Database**: MongoDB with Mongoose ODM
 - **Authentication**: JWT-based user authentication
 - **Payments**: PhonePe payment gateway integration
+- **Email Notifications**: Automated payment confirmation emails
 - **Shipping**: Delhivery shipping and tracking integration
 - **Admin Panel**: Product and order management
 
@@ -77,6 +78,9 @@ Create `.env` files in both `client/` and `server/` directories with your config
 ### Payments
 - `POST /api/payments/initiate` - Initiate PhonePe payment
 - `POST /api/payments/callback` - PhonePe webhook callback
+- `POST /api/payments/test-email` - Test email configuration
+- `POST /api/payments/send-notification` - Send payment notification manually
+- `GET /api/payments/email-status` - Check email service status
 
 ### Shipping
 - `POST /api/shipping/create` - Create Delhivery shipment
@@ -88,6 +92,7 @@ Create `.env` files in both `client/` and `server/` directories with your config
 - **Backend**: Node.js, Express, Mongoose, JWT
 - **Database**: MongoDB Atlas
 - **Payment**: PhonePe API
+- **Email**: Nodemailer with Handlebars templates
 - **Shipping**: Delhivery API
 - **Development**: Nodemon, Concurrently
 

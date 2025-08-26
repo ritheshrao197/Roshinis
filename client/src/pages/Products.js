@@ -22,12 +22,8 @@ import {
   IconButton,
   InputAdornment,
   Drawer,
-  List,
-  ListItem,
-  ListItemText,
   Checkbox,
   FormControlLabel,
-  Divider,
   Fab,
   Badge,
   CardActions
@@ -35,15 +31,14 @@ import {
 import {
   Search as SearchIcon,
   FilterList as FilterIcon,
-  Sort as SortIcon,
   ShoppingCart as CartIcon,
   Visibility as ViewIcon,
-  Favorite as FavoriteIcon,
   FavoriteBorder as FavoriteBorderIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import axios from 'axios';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -82,43 +77,52 @@ const Products = () => {
   }, []);
 
   // Fetch products from API
-  useEffect(() => {
-    fetchProducts();
-  }, [searchTerm, selectedCategory, sortBy, currentPage, filters]);
-
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      // In real app, make API call here
-      // const response = await api.getProducts({
-      //   search: searchTerm,
-      //   category: selectedCategory,
-      //   sort: sortBy,
-      //   page: currentPage,
-      //   filters
-      // });
-
-      // Mock data for now
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Make API call to get products
+      const params = {
+        page: currentPage,
+        limit: 12 // Show 12 products per page
+      };
       
-      const mockProducts = Array.from({ length: 12 }, (_, i) => ({
-        id: i + 1,
-        name: `Product ${i + 1}`,
-        description: `This is a sample product description for product ${i + 1}. It includes various features and benefits.`,
-        price: Math.floor(Math.random() * 5000) + 500,
-        originalPrice: Math.floor(Math.random() * 6000) + 600,
-        category: categories[Math.floor(Math.random() * categories.length)],
-        image: `https://picsum.photos/300/300?random=${i + 1}`,
-        rating: (Math.random() * 2 + 3).toFixed(1),
-        reviewCount: Math.floor(Math.random() * 100) + 10,
-        inStock: Math.random() > 0.3,
-        onSale: Math.random() > 0.7,
-        discount: Math.floor(Math.random() * 30) + 10
-      }));
+      // Only add parameters if they have values
+      if (searchTerm && searchTerm.trim()) {
+        params.search = searchTerm.trim();
+      }
+      if (selectedCategory && selectedCategory !== '') {
+        params.category = selectedCategory;
+      }
+      if (sortBy && sortBy !== '') {
+        params.sort = sortBy;
+      }
+      
+      const response = await axios.get('/api/products', { params });
 
-      setProducts(mockProducts);
-      setTotalPages(5); // Mock total pages
-      setError('');
+      if (response.data.success) {
+        // Transform API data to match the UI format
+        const transformedProducts = response.data.products.map(product => ({
+          id: product._id,
+          name: product.name,
+          description: product.description || `This is a sample product description for ${product.name}. It includes various features and benefits.`,
+          price: product.price,
+          originalPrice: product.comparePrice || (product.price * 1.2), // 20% markup for original price
+          category: product.category,
+          image: `https://picsum.photos/300/300?random=${product._id?.slice(-3) || Math.floor(Math.random() * 1000)}`,
+          rating: (Math.random() * 2 + 3).toFixed(1),
+          reviewCount: Math.floor(Math.random() * 100) + 10,
+          inStock: product.status === 'active',
+          onSale: Math.random() > 0.7,
+          discount: Math.floor(Math.random() * 30) + 10
+        }));
+        
+        setProducts(transformedProducts);
+        setTotalPages(response.data.pages || 1);
+        setError(''); // Clear any previous errors
+        console.log('✅ Public products loaded:', transformedProducts.length);
+      } else {
+        setError('Failed to fetch products from API');
+      }
     } catch (err) {
       setError('Failed to fetch products. Please try again.');
       console.error('Error fetching products:', err);
@@ -126,6 +130,10 @@ const Products = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchProducts();
+  }, [searchTerm, selectedCategory, sortBy, currentPage, filters, categories]);
 
   const handleSearch = (event) => {
     setSearchTerm(event.target.value);

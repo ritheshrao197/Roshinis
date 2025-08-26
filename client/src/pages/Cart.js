@@ -340,6 +340,7 @@ const Cart = () => {
                 onChange={(e) => setShippingMethod(e.target.value)}
               >
                 <FormControlLabel
+                  key="standard"
                   value="standard"
                   control={<Radio />}
                   label={
@@ -357,6 +358,7 @@ const Cart = () => {
                   }
                 />
                 <FormControlLabel
+                  key="express"
                   value="express"
                   control={<Radio />}
                   label={
@@ -394,11 +396,13 @@ const Cart = () => {
                   onChange={(e) => setPaymentMethod(e.target.value)}
                 >
                   <FormControlLabel
+                    key="phonepe"
                     value="phonepe"
                     control={<Radio />}
                     label="PhonePe (UPI, Cards, Net Banking)"
                   />
                   <FormControlLabel
+                    key="cod"
                     value="cod"
                     control={<Radio />}
                     label="Cash on Delivery"

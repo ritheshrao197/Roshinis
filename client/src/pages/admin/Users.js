@@ -30,7 +30,6 @@ import {
   DialogActions,
   Alert,
   Avatar,
-  Switch,
   FormControlLabel
 } from '@mui/material';
 import {

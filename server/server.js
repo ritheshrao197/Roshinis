@@ -8,12 +8,17 @@ require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/products');
+const categoryRoutes = require('./routes/categories');
 const orderRoutes = require('./routes/orders');
 const paymentRoutes = require('./routes/payments');
 const shippingRoutes = require('./routes/shipping');
 
+// Initialize services
+const emailService = require('./services/emailService');
+const phonepeService = require('./services/phonepeService');
+
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5003;
 
 // Security middleware
 app.use(helmet());
@@ -64,12 +69,31 @@ app.use('/api/auth', authRoutes);
 console.log('✅ Auth routes loaded');
 app.use('/api/products', productRoutes);
 console.log('✅ Product routes loaded');
+app.use('/api/categories', categoryRoutes);
+console.log('✅ Category routes loaded');
 app.use('/api/orders', orderRoutes);
 console.log('✅ Order routes loaded');
 app.use('/api/payments', paymentRoutes);
 console.log('✅ Payment routes loaded');
 app.use('/api/shipping', shippingRoutes);
 console.log('✅ Shipping routes loaded');
+
+// Initialize email service
+console.log('Initializing email service...');
+emailService.verifyConnection()
+  .then((connected) => {
+    if (connected) {
+      console.log('✅ Email service initialized and connected');
+      console.log('📧 Email notifications enabled for payments');
+    } else {
+      console.log('⚠️  Email service initialized but not connected');
+      console.log('   Check EMAIL_USER and EMAIL_PASSWORD in .env file');
+    }
+  })
+  .catch((error) => {
+    console.log('⚠️  Email service initialization failed:', error.message);
+    console.log('   Email notifications will be disabled');
+  });
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

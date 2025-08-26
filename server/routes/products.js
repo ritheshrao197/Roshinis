@@ -1,13 +1,15 @@
 const express = require('express');
 const { body, validationResult, query } = require('express-validator');
-const Product = require('../models/Product');
+// const Product = require('../models/Product'); // Commented out for mock mode
 const { protect, authorize } = require('../middleware/auth');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
+const phonepeService = require('../services/phonepeService');
+// const Order = require('../models/Order'); // Commented out for mock mode
 
 const router = express.Router();
 
-// @desc    Get all products (public)
+// @desc    Get all products (public) - MOCK VERSION
 // @route   GET /api/products
 // @access  Public
 router.get('/', [
@@ -105,15 +107,142 @@ router.get('/', [
     // Calculate pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
     
-    // Execute query
-    const products = await Product.find(filter)
-      .sort(sortObj)
-      .skip(skip)
-      .limit(parseInt(limit))
-      .populate('createdBy', 'name');
+    // MOCK: Return sample products instead of database query
+    const allMockProducts = [
+      {
+        _id: 'mock-1',
+        name: 'Premium Electronics Product',
+        description: 'High-quality electronics product with advanced features',
+        category: 'electronics',
+        price: 999,
+        status: 'active',
+        createdAt: new Date('2024-01-15'),
+        createdBy: { name: 'Admin User' }
+      },
+      {
+        _id: 'mock-2',
+        name: 'Designer Clothing Item',
+        description: 'Stylish and comfortable clothing for everyday wear',
+        category: 'clothing',
+        price: 599,
+        status: 'active',
+        createdAt: new Date('2024-01-14'),
+        createdBy: { name: 'Admin User' }
+      },
+      {
+        _id: 'mock-3',
+        name: 'Educational Book Collection',
+        description: 'Comprehensive collection of educational books',
+        category: 'books',
+        price: 299,
+        status: 'active',
+        createdAt: new Date('2024-01-13'),
+        createdBy: { name: 'Admin User' }
+      },
+      {
+        _id: 'mock-4',
+        name: 'Home Decor Set',
+        description: 'Beautiful home decor items to enhance your living space',
+        category: 'home',
+        price: 799,
+        status: 'active',
+        createdAt: new Date('2024-01-12'),
+        createdBy: { name: 'Admin User' }
+      },
+      {
+        _id: 'mock-5',
+        name: 'Sports Equipment Bundle',
+        description: 'Complete sports equipment for fitness enthusiasts',
+        category: 'sports',
+        price: 1299,
+        status: 'active',
+        createdAt: new Date('2024-01-11'),
+        createdBy: { name: 'Admin User' }
+      },
+      {
+        _id: 'mock-6',
+        name: 'Beauty Care Package',
+        description: 'Premium beauty products for skincare and wellness',
+        category: 'beauty',
+        price: 459,
+        status: 'active',
+        createdAt: new Date('2024-01-10'),
+        createdBy: { name: 'Admin User' }
+      },
+      {
+        _id: 'mock-7',
+        name: 'Automotive Accessories',
+        description: 'Essential accessories for your vehicle',
+        category: 'automotive',
+        price: 699,
+        status: 'active',
+        createdAt: new Date('2024-01-09'),
+        createdBy: { name: 'Admin User' }
+      },
+      {
+        _id: 'mock-8',
+        name: 'Smartphone Accessories',
+        description: 'Cases, chargers, and other smartphone accessories',
+        category: 'electronics',
+        price: 149,
+        status: 'active',
+        createdAt: new Date('2024-01-08'),
+        createdBy: { name: 'Admin User' }
+      },
+      {
+        _id: 'mock-9',
+        name: 'Casual Wear Collection',
+        description: 'Comfortable casual clothing for all occasions',
+        category: 'clothing',
+        price: 399,
+        status: 'active',
+        createdAt: new Date('2024-01-07'),
+        createdBy: { name: 'Admin User' }
+      },
+      {
+        _id: 'mock-10',
+        name: 'Kitchen Essentials',
+        description: 'Must-have kitchen tools and appliances',
+        category: 'home',
+        price: 899,
+        status: 'active',
+        createdAt: new Date('2024-01-06'),
+        createdBy: { name: 'Admin User' }
+      },
+      {
+        _id: 'mock-11',
+        name: 'Fitness Tracker',
+        description: 'Advanced fitness tracking device with health monitoring',
+        category: 'sports',
+        price: 249,
+        status: 'active',
+        createdAt: new Date('2024-01-05'),
+        createdBy: { name: 'Admin User' }
+      },
+      {
+        _id: 'mock-12',
+        name: 'Organic Skincare Set',
+        description: 'Natural and organic skincare products',
+        category: 'beauty',
+        price: 329,
+        status: 'active',
+        createdAt: new Date('2024-01-04'),
+        createdBy: { name: 'Admin User' }
+      }
+    ];
+    
+    // Apply basic filtering
+    let filteredProducts = allMockProducts.filter(product => {
+      if (category && product.category !== category) return false;
+      if (search && !product.name.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+    
+    // Apply pagination
+    const total = filteredProducts.length;
+    const products = filteredProducts.slice(skip, skip + parseInt(limit));
 
-    // Get total count for pagination
-    const total = await Product.countDocuments(filter);
+    console.log(`✅ Mock products query: returning ${products.length} of ${total} products`);
 
     res.json({
       success: true,
@@ -169,7 +298,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// @desc    Create new product (admin only)
+// @desc    Create new product (admin only) - MOCK VERSION
 // @route   POST /api/products
 // @access  Private/Admin
 router.post('/', protect, authorize('admin'), [
@@ -186,14 +315,7 @@ router.post('/', protect, authorize('admin'), [
     .withMessage('Invalid category'),
   body('price')
     .isFloat({ min: 0 })
-    .withMessage('Price must be a positive number'),
-  body('comparePrice')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Compare price must be a positive number'),
-  body('inventory.quantity')
-    .isInt({ min: 0 })
-    .withMessage('Quantity must be a non-negative integer')
+    .withMessage('Price must be a positive number')
 ], async (req, res) => {
   try {
     // Check for validation errors
@@ -206,14 +328,21 @@ router.post('/', protect, authorize('admin'), [
       });
     }
 
-    // Add creator to product
-    req.body.createdBy = req.user._id;
+    // MOCK: Simulate successful product creation
+    const mockProduct = {
+      _id: 'mock-id-' + Date.now(),
+      ...req.body,
+      createdBy: req.user._id || 'mock-admin-id',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
 
-    const product = await Product.create(req.body);
+    console.log('✅ Mock product created:', mockProduct.name);
 
     res.status(201).json({
       success: true,
-      product
+      message: 'Product created successfully (mock mode)',
+      product: mockProduct
     });
   } catch (error) {
     console.error('Create product error:', error);
@@ -459,6 +588,87 @@ router.get('/category/:category', [
       success: false,
       message: 'Internal server error'
     });
+  }
+});
+
+// @desc    Initiate PhonePe payment
+// @route   POST /api/payments/phonepe/initiate
+// @access  Public or Private (as needed)
+router.post('/phonepe/initiate', async (req, res) => {
+  try {
+    const {
+      orderId,
+      amount,
+      customerName,
+      customerEmail,
+      customerPhone,
+      redirectUrl
+    } = req.body;
+
+    // Optionally, create a pending order in DB here
+
+    // Call the PhonePe service
+    const paymentResult = await phonepeService.initiatePayment({
+      orderId,
+      amount,
+      customerName,
+      customerEmail,
+      customerPhone,
+      redirectUrl
+    });
+
+    if (paymentResult.success) {
+      res.json({ success: true, paymentUrl: paymentResult.paymentUrl });
+    } else {
+      res.status(400).json({ success: false, message: 'Failed to initiate PhonePe payment' });
+    }
+  } catch (error) {
+    console.error('PhonePe initiate error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to initiate PhonePe payment' });
+  }
+});
+
+// @desc    PhonePe webhook callback
+// @route   POST /api/payments/callback
+router.post('/callback', async (req, res) => {
+  try {
+    const webhookData = req.body;
+    const webhookResult = await phonepeService.handleWebhook(webhookData);
+
+    // Find and update the order
+    const order = await Order.findOne({ orderId: webhookResult.merchantTransactionId });
+    if (order) {
+      order.paymentStatus = webhookResult.status;
+      if (webhookResult.status === 'SUCCESS') {
+        order.status = 'Paid';
+        // You can trigger shipment, send emails, etc. here
+      } else {
+        order.status = 'Payment Failed';
+      }
+      await order.save();
+    }
+
+    res.json({ success: true, message: 'Webhook processed successfully' });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message || 'Webhook processing failed' });
+  }
+});
+
+router.post('/orders', async (req, res) => {
+  try {
+    const { orderId, items, user, totalAmount } = req.body;
+    const order = new Order({
+      orderId,
+      items,
+      user,
+      totalAmount,
+      status: 'Pending',
+      paymentStatus: 'Pending'
+    });
+    await order.save();
+    res.json({ success: true, order });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

@@ -8,7 +8,6 @@ import {
   Typography,
   Button,
   Box,
-  Paper,
   List,
   ListItem,
   ListItemText,
@@ -20,21 +19,21 @@ import {
   Divider,
   IconButton,
   Alert,
-  Skeleton,
   LinearProgress
 } from '@mui/material';
 import {
-  Dashboard as DashboardIcon,
   ShoppingCart as OrdersIcon,
   Inventory as ProductsIcon,
   People as UsersIcon,
   TrendingUp as RevenueIcon,
-  LocalShipping as ShippingIcon,
-  Payment as PaymentIcon,
   Visibility as ViewIcon,
   Add as AddIcon,
   Refresh as RefreshIcon,
-  ArrowForward as ArrowForwardIcon
+  ArrowForward as ArrowForwardIcon,
+  Category as CategoryIcon,
+  Image as BannerIcon,
+  LocalOffer as CouponIcon,
+  Settings as SettingsIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -364,7 +363,7 @@ const AdminDashboard = () => {
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>Quick Actions</Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                 <Button
                   variant="contained"
                   startIcon={<AddIcon />}
@@ -383,11 +382,35 @@ const AdminDashboard = () => {
                 </Button>
                 <Button
                   variant="outlined"
-                  startIcon={<UsersIcon />}
-                  onClick={() => navigate('/admin/users')}
+                  startIcon={<CategoryIcon />}
+                  onClick={() => navigate('/admin/categories')}
                   fullWidth
                 >
-                  Manage Users
+                  Manage Categories
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<BannerIcon />}
+                  onClick={() => navigate('/admin/banners')}
+                  fullWidth
+                >
+                  Manage Banners
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<CouponIcon />}
+                  onClick={() => navigate('/admin/coupons')}
+                  fullWidth
+                >
+                  Manage Coupons
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<SettingsIcon />}
+                  onClick={() => navigate('/admin/settings')}
+                  fullWidth
+                >
+                  System Settings
                 </Button>
               </Box>
             </CardContent>
@@ -438,8 +461,8 @@ const AdminDashboard = () => {
                           </Typography>
                         </Box>
                         <Chip
-                          label={getStatusText(order.status)}
-                          color={getStatusColor(order.status)}
+                          label={getStatusText(order.status?.current || order.status)}
+                          color={getStatusColor(order.status?.current || order.status)}
                           size="small"
                         />
                         <IconButton

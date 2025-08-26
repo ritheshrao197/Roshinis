@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { CssBaseline, Box, Container, Paper, Typography, Divider, TextField, Button } from '@mui/material';
+import { CssBaseline, Box } from '@mui/material';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 // Components
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
-import LoadingSpinner from './components/common/LoadingSpinner';
 
 // Pages
 import Home from './pages/Home';
@@ -26,6 +25,10 @@ import AdminDashboard from './pages/admin/Dashboard';
 import AdminProducts from './pages/admin/Products';
 import AdminOrders from './pages/admin/Orders';
 import AdminUsers from './pages/admin/Users';
+import AdminCategories from './pages/admin/Categories';
+import AdminBanners from './pages/admin/Banners';
+import AdminCoupons from './pages/admin/Coupons';
+import AdminSettings from './pages/admin/Settings';
 import AddProduct from './pages/admin/AddProduct';
 
 // Context
@@ -179,6 +182,10 @@ function App() {
                   <Route path="/admin/products" element={<AdminProducts />} />
                   <Route path="/admin/orders" element={<AdminOrders />} />
                   <Route path="/admin/users" element={<AdminUsers />} />
+                  <Route path="/admin/categories" element={<AdminCategories />} />
+                  <Route path="/admin/banners" element={<AdminBanners />} />
+                  <Route path="/admin/coupons" element={<AdminCoupons />} />
+                  <Route path="/admin/settings" element={<AdminSettings />} />
                   <Route path="/admin/products/new" element={<AddProduct />} />
 
                   {/* 404 Route */}

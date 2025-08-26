@@ -19,31 +19,31 @@ const featuredProducts = [
   {
     name: "Roshini’s NutriMix",
     description: "A nutrient-dense blend of 30+ grains, pulses, nuts, and seeds. Perfect for daily energy, protein, and immunity. 👉 Diabetic-friendly, sugar-free, and safe for all ages.",
-    image: "/assets/nutrimix.jpg", // Place your image in public/assets/
+    image: "/assets/placeholder.svg", // Place your image in public/assets/
     cta: "Add to Cart",
   },
   {
     name: "Ragi Chocobite",
     description: "A guilt-free delight that combines the power of ragi with real cocoa. Loved by kids and adults alike.",
-    image: "/assets/ragi-chocobite.jpg",
+    image: "/assets/placeholder.svg",
     cta: "Add to Cart",
   },
   {
     name: "Pure Cow Ghee",
     description: "Traditionally prepared, rich in aroma and flavor. Perfect for cooking, rituals, or just a spoonful of pure health.",
-    image: "/assets/ghee.jpg",
+    image: "/assets/placeholder.svg",
     cta: "Add to Cart",
   },
   {
     name: "Special Kashaya Powder",
     description: "An Ayurvedic immunity booster with herbs and spices for digestion, detox, and protection against seasonal illnesses.",
-    image: "/assets/kashaya.jpg",
+    image: "/assets/placeholder.svg",
     cta: "Add to Cart",
   },
   {
     name: "Ubtan Face Pack/Wash",
     description: "Herbal skincare made with natural ingredients for glowing, healthy skin.",
-    image: "/assets/ubtan.jpg",
+    image: "/assets/placeholder.svg",
     cta: "Add to Cart",
   },
 ];
@@ -124,7 +124,7 @@ const Home = () => {
             {/* Replace with your own image */}
             <Box
               component="img"
-              src="/assets/hero-family.jpg"
+              src="/assets/placeholder.svg"
               alt="Family enjoying healthy breakfast"
               sx={{
                 width: '100%',

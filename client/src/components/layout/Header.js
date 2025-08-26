@@ -23,7 +23,6 @@ import {
 import {
   Search as SearchIcon,
   ShoppingCart as CartIcon,
-  Person as PersonIcon,
   Menu as MenuIcon,
   Home as HomeIcon,
   Store as StoreIcon,

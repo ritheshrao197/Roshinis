@@ -16,18 +16,29 @@ import {
   Paper,
   Chip,
 } from '@mui/material';
+import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const categories = [
-  'Health Mixes',
-  'Spices & Wellness',
-  'Pure Essentials',
-  'Skincare',
+  'electronics',
+  'clothing', 
+  'books',
+  'home',
+  'sports',
+  'beauty',
+  'automotive',
+  'other'
 ];
 const subcategories = {
-  'Health Mixes': ['Immunity Boosters', 'Protein Mixes'],
-  'Spices & Wellness': ['Digestive Aids', 'Ayurvedic Powders'],
-  'Pure Essentials': ['Ghee', 'Oils'],
-  'Skincare': ['Face Packs', 'Cleansers'],
+  'electronics': ['Smartphones', 'Laptops', 'Accessories'],
+  'clothing': ['Men', 'Women', 'Kids'],
+  'books': ['Fiction', 'Non-Fiction', 'Educational'],
+  'home': ['Kitchen', 'Decor', 'Furniture'],
+  'sports': ['Fitness', 'Outdoor', 'Equipment'],
+  'beauty': ['Skincare', 'Makeup', 'Haircare'],
+  'automotive': ['Parts', 'Accessories', 'Tools'],
+  'other': ['Miscellaneous']
 };
 const stockStatuses = ['In Stock', 'Out of Stock', 'Pre-order'];
 const units = ['g', 'kg', 'ml', 'L', 'pcs'];
@@ -36,6 +47,15 @@ const suitableForOptions = ['Kids', 'Adults', 'Elders', 'Diabetics', 'Everyone']
 const certifications = ['Sugar-free', 'Organic', 'Clean-label', 'Homemade'];
 
 export default function AddProduct() {
+  const { user, isAuthenticated, isAdmin } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect if not authenticated or not admin
+  React.useEffect(() => {
+    if (!isAuthenticated || !isAdmin) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, isAdmin, navigate]);
   // Form state
   const [productName, setProductName] = useState('');
   const [slug, setSlug] = useState('');
@@ -97,49 +117,96 @@ export default function AddProduct() {
     e.preventDefault();
     setLoading(true);
     setMessage('');
+    
     try {
-      const formData = new FormData();
-      formData.append('name', productName);
-      formData.append('slug', slug);
-      formData.append('category', category);
-      formData.append('subCategory', subCategory);
-      formData.append('sku', sku);
-      formData.append('brand', brand);
-      formData.append('shortDesc', shortDesc);
-      formData.append('fullDesc', fullDesc);
-      formData.append('sellingPrice', sellingPrice);
-      formData.append('mrp', mrp);
-      formData.append('stockQty', stockQty);
-      formData.append('stockStatus', stockStatus);
-      formData.append('unit', unit);
-      formData.append('minOrderQty', minOrderQty);
-      images.forEach((img) => formData.append('images', img));
-      formData.append('video', video);
-      formData.append('ingredients', ingredients.join(','));
-      formData.append('suitableFor', suitableFor.join(','));
-      formData.append('shelfLife', shelfLife);
-      formData.append('storage', storage);
-      formData.append('claims', claims.join(','));
-      formData.append('metaTitle', metaTitle);
-      formData.append('metaDesc', metaDesc);
-      formData.append('keywords', keywords.join(','));
-      formData.append('weight', weight);
-      formData.append('dimensions', dimensions);
-      formData.append('shippingClass', shippingClass);
-      formData.append('variants', variants);
+      // Prepare product data in the format expected by the server
+      const productData = {
+        name: productName,
+        slug: slug,
+        description: fullDesc,
+        shortDescription: shortDesc,
+        category: category.toLowerCase(), // Server expects lowercase categories
+        subCategory: subCategory,
+        sku: sku,
+        brand: brand,
+        price: parseFloat(sellingPrice),
+        comparePrice: mrp ? parseFloat(mrp) : undefined,
+        inventory: {
+          quantity: parseInt(stockQty) || 0,
+          trackQuantity: true,
+          allowBackorder: stockStatus === 'Pre-order'
+        },
+        unit: unit,
+        minOrderQty: parseInt(minOrderQty) || 1,
+        ingredients: ingredients,
+        suitableFor: suitableFor,
+        shelfLife: shelfLife,
+        storage: storage,
+        claims: claims,
+        seo: {
+          metaTitle: metaTitle,
+          metaDescription: metaDesc,
+          keywords: keywords
+        },
+        shipping: {
+          weight: parseFloat(weight) || 0,
+          dimensions: dimensions,
+          shippingClass: shippingClass
+        },
+        variants: variants,
+        status: 'active',
+        featured: false
+      };
 
-      // Send to backend
-      const response = await fetch('/api/admin/products', {
-        method: 'POST',
-        body: formData,
-        // Add headers if needed (e.g., Authorization)
-      });
+      // Send to backend using axios (which includes auth headers automatically)
+      const response = await axios.post('/api/products', productData);
 
-      if (!response.ok) throw new Error('Failed to publish product');
-      setMessage('Product published successfully!');
-      // Optionally, reset form here
+      if (response.data.success) {
+        setMessage('Product published successfully!');
+        // Reset form
+        setProductName('');
+        setSlug('');
+        setCategory('');
+        setSubCategory('');
+        setSku('');
+        setShortDesc('');
+        setFullDesc('');
+        setSellingPrice('');
+        setMrp('');
+        setStockQty('');
+        setIngredients([]);
+        setSuitableFor([]);
+        setShelfLife('');
+        setStorage('');
+        setClaims([]);
+        setMetaTitle('');
+        setMetaDesc('');
+        setKeywords([]);
+        setWeight('');
+        setDimensions('');
+        setVariants('');
+        setImages([]);
+        setVideo('');
+        
+        // Redirect to products list after a delay
+        setTimeout(() => {
+          navigate('/admin/products');
+        }, 2000);
+      } else {
+        setMessage('Error: ' + (response.data.message || 'Failed to publish product'));
+      }
     } catch (err) {
-      setMessage('Error: ' + err.message);
+      console.error('Product creation error:', err);
+      if (err.response?.status === 401) {
+        setMessage('Error: Unauthorized. Please login as admin.');
+        navigate('/login');
+      } else if (err.response?.status === 403) {
+        setMessage('Error: Access denied. Admin privileges required.');
+      } else if (err.response?.data?.message) {
+        setMessage('Error: ' + err.response.data.message);
+      } else {
+        setMessage('Error: Failed to publish product');
+      }
     } finally {
       setLoading(false);
     }
@@ -180,7 +247,11 @@ export default function AddProduct() {
                   label="Category"
                   onChange={e => { setCategory(e.target.value); setSubCategory(''); }}
                 >
-                  {categories.map(cat => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}
+                  {categories.map(cat => (
+                    <MenuItem key={cat} value={cat}>
+                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Grid>

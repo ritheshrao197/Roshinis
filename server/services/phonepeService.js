@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const axios = require('axios');
+const emailService = require('./emailService');
 
 class PhonePeService {
   constructor() {
@@ -162,7 +163,7 @@ class PhonePeService {
         throw new Error('Invalid merchant ID');
       }
 
-      return {
+      const webhookResult = {
         success: true,
         merchantTransactionId,
         transactionId,
@@ -172,6 +173,15 @@ class PhonePeService {
         responseMessage,
         verified: true
       };
+
+      // Send email notifications if payment is successful
+      if (paymentState === 'COMPLETED' || paymentState === 'SUCCESS') {
+        await this.sendPaymentNotifications(webhookResult, webhookData);
+      } else if (paymentState === 'FAILED' || paymentState === 'DECLINED') {
+        await this.sendPaymentFailureNotifications(webhookResult, webhookData);
+      }
+
+      return webhookResult;
     } catch (error) {
       console.error('PhonePe webhook handling error:', error);
       throw error;
@@ -281,6 +291,101 @@ class PhonePeService {
       style: 'currency',
       currency: 'INR'
     }).format(amount);
+  }
+
+  // Send payment success notifications
+  async sendPaymentNotifications(paymentData, originalWebhookData) {
+    try {
+      // Extract order information from webhook data or use defaults
+      const orderData = {
+        orderNumber: paymentData.merchantTransactionId,
+        transactionId: paymentData.transactionId,
+        amount: paymentData.amount,
+        customerName: originalWebhookData.customerName || 'Valued Customer',
+        customerEmail: originalWebhookData.customerEmail || originalWebhookData.merchantUserId,
+        customerPhone: originalWebhookData.customerPhone || originalWebhookData.mobileNumber,
+        shippingAddress: originalWebhookData.shippingAddress || 'Address on file',
+        paymentMethod: 'PhonePe'
+      };
+
+      // Validate required fields for email
+      if (!orderData.customerEmail) {
+        console.warn('⚠️  Customer email not available, skipping user notification');
+      } else {
+        // Send email to user
+        try {
+          await emailService.sendPaymentSuccessEmailToUser(orderData);
+          console.log('✅ Payment success email sent to user');
+        } catch (error) {
+          console.error('❌ Failed to send payment success email to user:', error.message);
+        }
+      }
+
+      // Send email to admin
+      try {
+        await emailService.sendPaymentNotificationToAdmin(orderData);
+        console.log('✅ Payment notification email sent to admin');
+      } catch (error) {
+        console.error('❌ Failed to send payment notification email to admin:', error.message);
+      }
+
+      return { emailNotificationsSent: true };
+    } catch (error) {
+      console.error('❌ Error sending payment notifications:', error);
+      return { emailNotificationsSent: false, error: error.message };
+    }
+  }
+
+  // Send payment failure notifications
+  async sendPaymentFailureNotifications(paymentData, originalWebhookData) {
+    try {
+      // Extract order information from webhook data or use defaults
+      const orderData = {
+        orderNumber: paymentData.merchantTransactionId,
+        transactionId: paymentData.transactionId,
+        amount: paymentData.amount,
+        customerName: originalWebhookData.customerName || 'Valued Customer',
+        customerEmail: originalWebhookData.customerEmail || originalWebhookData.merchantUserId,
+        responseMessage: paymentData.responseMessage || 'Payment processing failed'
+      };
+
+      // Validate required fields for email
+      if (!orderData.customerEmail) {
+        console.warn('⚠️  Customer email not available, skipping failure notification');
+        return { emailNotificationsSent: false };
+      }
+
+      // Send failure email to user
+      try {
+        await emailService.sendPaymentFailedEmailToUser(orderData);
+        console.log('✅ Payment failure email sent to user');
+        return { emailNotificationsSent: true };
+      } catch (error) {
+        console.error('❌ Failed to send payment failure email to user:', error.message);
+        return { emailNotificationsSent: false, error: error.message };
+      }
+    } catch (error) {
+      console.error('❌ Error sending payment failure notifications:', error);
+      return { emailNotificationsSent: false, error: error.message };
+    }
+  }
+
+  // Verify payment and send notifications
+  async verifyPaymentAndNotify(transactionId, orderData = null) {
+    try {
+      const verificationResult = await this.verifyPayment(transactionId);
+      
+      if (verificationResult.success && (verificationResult.status === 'COMPLETED' || verificationResult.status === 'SUCCESS')) {
+        // Merge verification result with order data if provided
+        const combinedData = orderData ? { ...verificationResult, ...orderData } : verificationResult;
+        await this.sendPaymentNotifications(combinedData, orderData || {});
+      }
+      
+      return verificationResult;
+    } catch (error) {
+      console.error('Error verifying payment and sending notifications:', error);
+      throw error;
+    }
   }
 }
 

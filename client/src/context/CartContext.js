@@ -13,7 +13,6 @@ export const useCart = () => {
 
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
-  const [loading, setLoading] = useState(false);
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -174,7 +173,6 @@ export const CartProvider = ({ children }) => {
 
   const value = {
     cartItems,
-    loading,
     addToCart,
     removeFromCart,
     updateQuantity,
